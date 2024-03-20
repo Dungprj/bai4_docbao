@@ -42,6 +42,17 @@ class _HomeScreenState extends State<HomeScreen>
     futureArticles = apiService.fetchTopHeadlinesByCategory(_categories.first);
   }
 
+  Future<void> _refreshArticles() async {
+    setState(() {
+      if (_tabController.index == 0) {
+        futureArticles = apiService.fetchAllCategories();
+      } else {
+        futureArticles = apiService
+            .fetchTopHeadlinesByCategory(_categories[_tabController.index]);
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -66,46 +77,49 @@ class _HomeScreenState extends State<HomeScreen>
           ),
         ],
       ),
-      body: TabBarView(
-        controller: _tabController,
-        children: _categories.map((category) {
-          return FutureBuilder<List<Article>>(
-            future: _tabController.index == 0
-                ? apiService.fetchAllCategories()
-                : apiService.fetchTopHeadlinesByCategory(category),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return Center(child: CircularProgressIndicator());
-              } else if (snapshot.hasError) {
-                return Center(child: Text('Error: ${snapshot.error}'));
-              } else if (snapshot.hasData) {
-                return ListView.builder(
-                  itemCount: snapshot.data!.length,
-                  itemBuilder: (context, index) {
-                    Article article = snapshot.data![index];
-                    return ListTile(
-                      title: Text(article.title),
-                      subtitle: Text(article.description),
-                      leading: article.urlToImage.isNotEmpty
-                          ? Image.network(article.urlToImage)
-                          : null,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  ArticleDetailScreen(article: article)),
-                        );
-                      },
-                    );
-                  },
-                );
-              } else {
-                return Center(child: Text('No articles found'));
-              }
-            },
-          );
-        }).toList(),
+      body: RefreshIndicator(
+        onRefresh: _refreshArticles,
+        child: TabBarView(
+          controller: _tabController,
+          children: _categories.map((category) {
+            return FutureBuilder<List<Article>>(
+              future: _tabController.index == 0
+                  ? apiService.fetchAllCategories()
+                  : apiService.fetchTopHeadlinesByCategory(category),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return Center(child: CircularProgressIndicator());
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                } else if (snapshot.hasData) {
+                  return ListView.builder(
+                    itemCount: snapshot.data!.length,
+                    itemBuilder: (context, index) {
+                      Article article = snapshot.data![index];
+                      return ListTile(
+                        title: Text(article.title),
+                        subtitle: Text(article.description),
+                        leading: article.urlToImage.isNotEmpty
+                            ? Image.network(article.urlToImage)
+                            : null,
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    ArticleDetailScreen(article: article)),
+                          );
+                        },
+                      );
+                    },
+                  );
+                } else {
+                  return Center(child: Text('No articles found'));
+                }
+              },
+            );
+          }).toList(),
+        ),
       ),
     );
   }
